@@ -1,0 +1,111 @@
+# Product Name: 4SMS
+# Descript: Control Send SMS
+# Author: João Ferreira
+# Email: joao@4network.net.br
+# Version: 1.0.0
+
+#!/bin/bash
+
+# Declaração de variaveis locais.
+FOLDER_BASE=/usr/local/4sms
+FILE_MESSAGE_ERROR=$FOLDER_BASE/extra/error.txt
+FILE_LOG=$FOLDER_BASE/log/4sms.log
+NUMBER_TOTAL_DEVICE=`cat $FOLDER_BASE/config/4sms.conf | egrep '^DEVICE_[0-9]*' | wc -l`
+ID_SMS=$1
+LOGIN=$2
+PHONE_NUMBER=$3
+TEXT_MESSAGE=$4
+USER=`cat $FOLDER_BASE/config/4sms.conf | egrep '^USER' | cut -d'|' -f2`
+GROUP=`cat $FOLDER_BASE/config/4sms.conf | egrep '^PASS' | cut -d'|' -f2`
+CURRENT_DATE=`date +'%A %d/%m/%Y às %H:%M:%S'`
+
+# Função log
+func_log() {
+	if [ ! -f $FILE_LOG ];
+	then 
+		printf "WARNNING: Arquivo de log não encontrado.\n";
+		printf "INFO: Criando arquivo de log.\n";
+		touch $FILE_LOG
+		chown $USER:$GROUP $FILE_LOG
+	fi      
+        
+	# 1 - ID SMS
+	# 2 - LOGIN
+	# 3 - PHONE NUMBER
+	# 4 - MESSAGE TEXT
+	# 5 - STATUS
+	echo "- [" $CURRENT_DATE "] >" $1 "-" $2 "-" $3 "-" $4 "-" $5 >> $FILE_LOG
+}
+
+# Função errors
+func_error() {
+	if [ ! -f $FILE_MESSAGE_ERROR ];
+	then
+		func_log $LOGIN $PHONE_NUMBER $TEXT_NUMBER "O arquivo padrão de errors não existe."
+		exit 0
+	fi
+
+	MESSAGE_ERROR=`grep -E '^'$1 $FILE_MESSAGE_ERROR | cut -d'|' -f2`
+	func_log $ID_SMS $LOGIN $PHONE_NUMBER "$TEXT_MESSAGE" "$MESSAGE_ERROR"
+	exit 0
+}
+
+# Verifica se a pasta base existe.
+if [ ! -d $FOLDER_BASE ]; 
+then
+	func_error "ERR001"	
+fi
+
+# Verifica se a pasta de configuração existe.
+if [ ! -d $FOLDER_BASE/config ]; 
+then
+	func_error "ERR002"
+fi
+
+# Verifica se o arquivo de configuração existe.
+if [ ! -f $FOLDER_BASE/config/4sms.conf ]; 
+then
+	func_error "ERR003"
+fi
+
+# Verifica se o diretório temporário existe.
+if [ ! -d $FOLDER_BASE/tmp ]; 
+then
+	func_error "ERR005"
+fi
+
+# Verifica se o arquivo de fila existe.
+if [ ! -f $FOLDER_BASE/tmp/queue ]; 
+then
+	printf "WARNNING: O arquivo de controle de fila não existe.\n";
+	printf "INFO: Criando o arquivo de controle de fila.\n";
+	touch $FOLDER_BASE/tmp/queue
+	chown $USER:$GROUP $FOLDER_BASE/tmp/queue
+	echo "ID_DEVICE|1" > $FOLDER_BASE/tmp/queue
+fi
+
+ID_DEVICE=`cat $FOLDER_BASE/tmp/queue | cut -d'|' -f2`
+DEVICE=`cat $FOLDER_BASE/config/4sms.conf | egrep '^DEVICE_'$ID_DEVICE | cut -d'|' -f2`
+
+# Verifica se o número de telefone é maior ou igual.
+# Sim: continua a execução do programa.
+# Não: encerra a execução do programa e registra no log.
+if [ ! ${#PHONE_NUMBER} -ge 12 ]; 
+then
+	func_error "ERR006"
+fi
+
+# Compara a quantidade de caracters na mensagem se é menor ou igual.
+# Sim: continua a execução do programa.
+# Não: encerra a execução do programa e registra no log.
+if [ ${#TEXT_MESSAGE} -gt 160 ]; then
+	func_error "ERR007"
+fi
+
+# envia
+# Movimenta a fila 
+if [ $ID_DEVICE -ge $NUMBER_TOTAL_DEVICE ]; then
+	echo $(sed 's/'$ID_DEVICE'/1/g' $FOLDER_BASE/tmp/queue) > $FOLDER_BASE/tmp/queue
+else
+	echo $(sed 's/'$ID_DEVICE'/'$(($ID_DEVICE+1))'/g' $FOLDER_BASE/tmp/queue) > $FOLDER_BASE/tmp/queue
+fi

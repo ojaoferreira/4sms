@@ -1,0 +1,7 @@
+ERR001|O diretório base não foi encontra.
+ERR002|O diretório de configuração não foi localizado.
+ERR003|O arquivo de configuração não foi localizado.
+ERR004|O diretório de log não foi localizado.
+ERR005|O diretório tmp não foi localizado.
+ERR006|Número de telefone inválido.
+ERR007|O tamanho da mensagem é superior à 160 caracters.
